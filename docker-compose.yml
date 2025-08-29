@@ -1,0 +1,21 @@
+version: '3.9'
+services:
+  api:
+    build: ./Web   # ruta donde tienes tu proyecto .NET (ajusta si es diferente)
+    container_name: pizzeria_api
+    ports:
+      - "5000:8080"   # API accesible en http://localhost:5000
+    depends_on:
+      - db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=Pizzeria;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: pizzeria_db
+    environment:
+      SA_PASSWORD: "Password123!"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"

@@ -10,21 +10,59 @@ using Web.ServiceExtension;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add controllers
+// Configura CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Controllers y servicios
 builder.Services.AddControllers();
 builder.Services.AddApplicationServices(builder.Configuration);
-
 builder.Services.AddValidatorsFromAssemblyContaining(typeof(Program));
-
 
 // Swagger
 builder.Services.AddSwaggerDocumentation();
 
 // DbContext
+// DbContext dinámico según el proveedor
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    var provider = builder.Configuration["DatabaseProvider"];
+    switch (provider)
+    {
+        case "SqlServer":
+            options.UseSqlServer(
+                builder.Configuration.GetConnectionString("DefaultConnection")
+            );
+            break;
 
-// Register generic repositories and business logic
+        case "Postgres":
+            options.UseNpgsql(
+                builder.Configuration.GetConnectionString("PostgresConnection")
+            );
+            break;
+
+        case "MySql":
+            options.UseMySql(
+                builder.Configuration.GetConnectionString("MySqlConnection"),
+                new MySqlServerVersion(new Version(8, 0, 39)) // versión de tu contenedor
+            );
+            break;
+
+        default:
+            throw new Exception("Proveedor de base de datos no soportado. Usa: SqlServer, Postgres o MySql en appsettings.json");
+    }
+});
+    
+
+
+// Repositorios y capa de negocio
 builder.Services.AddScoped(typeof(IBaseModelData<>), typeof(BaseModelData<>));
 builder.Services.AddScoped(typeof(IBaseBusiness<,>), typeof(BaseBusiness<,>));
 
@@ -37,17 +75,16 @@ builder.Services.AddScoped<IPizzaBusiness, PizzaBusiness>();
 builder.Services.AddScoped<IPedidoData, PedidoData>();
 builder.Services.AddScoped<IPedidoBusiness, PedidoBusiness>();
 
-builder.Services.AddAutoMapper(typeof(ClienteProfile));
-builder.Services.AddAutoMapper(typeof(PizzaProfile));
-builder.Services.AddAutoMapper(typeof(PedidoProfile));
-
-
-
+// AutoMapper (registro automático de perfiles)
+builder.Services.AddAutoMapper(typeof(ClienteProfile).Assembly);
 
 var app = builder.Build();
 
-// Swagger (solo en desarrollo)
-if (app.Environment.IsDevelopment())
+// Manejo global de errores (opcional)
+app.UseExceptionHandler("/error");
+
+// Swagger (según entorno o config)
+if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("EnableSwagger"))
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -57,18 +94,15 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Usa la política de CORS registrada en ApplicationServiceExtensions
-app.UseCors("AllowSpecificOrigins");
-
+// Middlewares
 app.UseHttpsRedirection();
-
-// Autenticación y autorización
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Inicializar base de datos y aplicar migraciones
+// Migraciones automáticas
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -86,5 +120,9 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "Ocurrió un error durante la migración de la base de datos.");
     }
 }
+
+// Log de arranque
+var loggerApp = app.Services.GetRequiredService<ILogger<Program>>();
+loggerApp.LogInformation("Aplicación iniciada correctamente en entorno {Env}", app.Environment.EnvironmentName);
 
 app.Run();

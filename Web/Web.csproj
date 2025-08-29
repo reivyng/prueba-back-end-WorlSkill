@@ -26,6 +26,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +37,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Utilities\Utilities.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\Users\ReyvingF\OneDrive\Documentos\trabajos-Sena\2025\Jhon Corredor\PruebaWS\Back-WorldSkill\Web\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\Users\ReyvingF\OneDrive\Documentos\trabajos-Sena\2025\Jhon Corredor\PruebaWS\Back-WorldSkill\Web\.editorconfig" />
   </ItemGroup>
 
 </Project>
